@@ -146,26 +146,13 @@ public class Principal {
                 return;
             }
 
-            // Mapear DatosLibro → Libro (para que tenga idioma largo)
             List<Libro> libros = listaLibros.stream()
                     .map(Libro::new)
                     .toList();
 
-            // Contar cuántos hay en español e inglés (por ejemplo)
-            /*long cantidadEspanol = libros.stream()
-                    .filter(libro -> libro.getIdioma().equalsIgnoreCase("español"))
-                    .count();
-
-            long cantidadIngles = libros.stream()
-                    .filter(libro -> libro.getIdioma().equalsIgnoreCase("inglés"))
-                    .count();*/
-            // Agrupar por idioma y contar cuántos hay de cada uno
             Map<String, Long> cantidadPorIdioma = libros.stream()
                     .collect(Collectors.groupingBy(Libro::getIdioma, Collectors.counting()));
 
-            /*System.out.println("📚 Cantidad de libros por idioma:");
-            System.out.println("Español: " + cantidadEspanol);
-            System.out.println("Inglés: " + cantidadIngles);*/
             System.out.println("📚 Cantidad de libros por idioma:");
             cantidadPorIdioma.forEach((idioma, cantidad) ->
                 System.out.println("- " + idioma + ": " + cantidad));
