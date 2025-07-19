@@ -2,18 +2,19 @@ package com.matisf04.Literalura.model;
 
 import jakarta.persistence.*;
 
-//@Entity
-//@Table(name = "libros")
+@Entity
+@Table(name = "libros")
 public class Libro {
-    //@Id
-    //@GeneratedValue(strategy = GenerationType.IDENTITY)
-    //@Column(name = "id", nullable = false)
-    //private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
+    @Column(unique = true)
     private String titulo;
     private Integer descargas;
     private String idioma;
-    //@ManyToOne(cascade = CascadeType.ALL)
-    private String autor;
+    @ManyToOne(cascade = CascadeType.ALL)
+    private Autor autor;
 
     @Override
     public String toString() {
@@ -25,46 +26,30 @@ public class Libro {
 
     public Libro() {}
 
-    /*
-    public Libro(DatosLibro datosLibro, DatosAutor datosAutor) {
-        this.titulo = datosLibro.titulo();
-        this.descargas = datosLibro.descargas();
-        this.idioma = Idioma.obtenerIdioma(datosLibro.idioma().getFirst());
-        this.autor = datosAutor.nombre();
-    }*/
-
     public Libro(DatosLibro datosLibro) {
         this.titulo = datosLibro.titulo();
+
         if (datosLibro.autor() != null && !datosLibro.autor().isEmpty()) {
-            this.autor = datosLibro.autor().get(0).nombre();
+            DatosAutor datosAutor = datosLibro.autor().get(0); // Tomamos el primer autor
+            this.autor = new Autor(datosAutor);
         } else {
-            this.autor = "Autor desconocido";
+            this.autor = new Autor(); // o null si preferís
+            this.autor.setNombre("Autor desconocido");
         }
+
         this.idioma = datosLibro.idioma() != null && !datosLibro.idioma().isEmpty()
                 ? Idioma.traducirCodigo(datosLibro.idioma().get(0))
                 : "Idioma desconocido";
         this.descargas = datosLibro.descargas();
     }
 
-
-    /*
-    public Libro(DatosLibro datosLibro) {
-        this.titulo = datosLibro.titulo();
-
-        if (datosLibro.autor() != null && !datosLibro.autor().isEmpty()) {
-            DatosAutor datosAutor = datosLibro.autor().get(0);
-            this.autor = new Autor(
-                    datosAutor.nombre(),
-                    datosAutor.nacimiento(),
-                    datosAutor.defuncion()
-            );
-        }
-
-        String codigoIdioma = datosLibro.idioma().isEmpty() ? "desconocido" : datosLibro.idioma().get(0);
-        this.idioma = Idioma.obtenerIdioma(codigoIdioma);
-        this.descargas = datosLibro.descargas();
+    public Long getId() {
+        return id;
     }
-    */
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     public String getTitulo() {
         return titulo;
@@ -90,11 +75,11 @@ public class Libro {
         this.idioma = idioma;
     }
 
-    public String getAutor() {
+    public Autor getAutor() {
         return autor;
     }
 
-    public void setAutor(String autor) {
+    public void setAutor(Autor autor) {
         this.autor = autor;
     }
 }

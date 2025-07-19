@@ -6,16 +6,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-//@Entity
+@Entity
+@Table(name = "autor")
 public class Autor {
-    //@Id
-    //@GeneratedValue(strategy = GenerationType.IDENTITY)
-    //private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     private String nombre;
     private Integer nacimiento;
     private Integer defuncion;
-    //@OneToMany(mappedBy = "autor", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    //private List<Libro> libros;
+    @OneToMany(mappedBy = "autor", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<Libro> libros;
 
     @Override
     public String toString() {
@@ -31,13 +32,6 @@ public class Autor {
         this.nacimiento = OptionalInt.of(Integer.valueOf(datosAutor.nacimiento())).orElse(0);
         this.defuncion = OptionalInt.of(Integer.valueOf(datosAutor.defuncion())).orElse(0);
     }
-
-    //public Autor(String nombre, Integer nacimiento, Integer defuncion) {
-    //    this.nombre = libros.getFirst().getAutor().nombre;
-    //    this.nacimiento = libros.getFirst().getAutor().nacimiento;
-    //    this.defuncion = libros.getFirst().getAutor().defuncion;
-    //    this.libros = libros.getFirst().getAutor().libros;
-    //}
 
     public String getNombre() {
         return nombre;

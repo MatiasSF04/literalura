@@ -1,10 +1,13 @@
 package com.matisf04.Literalura.principal;
 
 import com.matisf04.Literalura.model.*;
+import com.matisf04.Literalura.repository.AutorRepository;
+import com.matisf04.Literalura.repository.LibroRepository;
 import com.matisf04.Literalura.service.ConsumoAPI;
 import com.matisf04.Literalura.service.ConvierteDatos;
 
 import java.util.*;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Principal {
@@ -13,6 +16,13 @@ public class Principal {
     private final ConsumoAPI consumoAPI = new ConsumoAPI();
     private final ConvierteDatos convierteDatos = new ConvierteDatos();
     private List<DatosLibro> listaLibros = new ArrayList<>();
+    private LibroRepository repoLibro;
+    private AutorRepository repoAutor;
+
+    public Principal(LibroRepository repoLibro, AutorRepository repoAutor) {
+        this.repoLibro = repoLibro;
+        this.repoAutor = repoAutor;
+    }
 
     public void mostrarMenu() {
         var opcion = -1;
@@ -60,102 +70,107 @@ public class Principal {
         }
     }
 
-    private DatosLibro obtenerDatosLibro() {
+    private void buscarLibroXTitulo() {
         System.out.println("Escribe el nombre del libro que estás buscando:\n");
         var nombreLibro = teclado.nextLine();
         var json = consumoAPI.obtenerDatos(URL_BASE + "?search=" + nombreLibro.replace(" ", "%20"));
+
         if (json.isBlank()) {
             System.out.println("No se logró obtener un libro con ese nombre");
         } else {
             System.out.println(json);
         }
+
         DatosGeneral resultado = convierteDatos.obtenerDatos(json, DatosGeneral.class);
+
         if (resultado.libros().isEmpty()) {
             System.out.println("No se encontraron libros con ese título.");
-            return null;
         }
 
-        DatosLibro datos = resultado.libros().get(0);
-        return datos;
-    }
+        Optional<DatosLibro> datosLibro = resultado.libros().stream()
+        .filter(d -> {
+            boolean coincide = d.titulo().contains(nombreLibro);
+            if (coincide) {
+                System.out.println("Texto coincide con: " + nombreLibro);
+                System.out.println(d.titulo());
+            }
 
-    private void buscarLibroXTitulo() {
-        DatosLibro datos = obtenerDatosLibro();
-        if (datos == null) {
-            return;
-        }
+            coincide = repoLibro.findByTitulo(d.titulo()) == null;
 
-        listaLibros.add(datos);
+            return coincide;
+        })
+        .findFirst();
 
-        Libro libro = new Libro(datos);
-        System.out.println(libro);
-    }
+        if (datosLibro.isPresent()) {
+            Libro libro = new Libro(datosLibro.get());
+            Libro libroExistente = repoLibro.findByTitulo(libro.getTitulo());
 
-    private void listarLibrosBuscados() {
-        List<Libro> Libros = new ArrayList<>();
-        Libros = listaLibros.stream()
-                .map(d -> new Libro(d))
-                .collect(Collectors.toList());
-
-        Libros.stream()
-                .sorted(Comparator.comparing(Libro::getIdioma))
-                .forEach(System.out::println);
-    }
-
-    private void listarAutoresRegistrados() {
-        Set<String> nombresProcesados = new HashSet<>();
-
-        listaLibros.stream()
-                .flatMap(libro -> libro.autor().stream())
-                .filter(autor -> autor.nombre() != null && !nombresProcesados.contains(autor.nombre()))
-                .peek(autor -> nombresProcesados.add(autor.nombre()))
-                .forEach(autor -> {
-                    System.out.println("\nAutor: " + autor.nombre());
-                    System.out.println("  Nacimiento: " + (autor.nacimiento() != null ? autor.nacimiento() : "Desconocido"));
-                    System.out.println("  Defunción: " + (autor.defuncion() != null ? autor.defuncion() : "Desconocida"));
-                });
-
-        if (nombresProcesados.isEmpty()) {
-            System.out.println("No hay autores registrados aún.");
-        }
-    }
-
-    private void listarAutoresVivosXPeriodo() {
-        Set<String> listaAutoresPeriodo = new HashSet<>();
-        System.out.println("Por favor ingresa el año tope para filtrar autores vivos.");
-        Integer periodo = teclado.nextInt();
-        teclado.nextLine();
-
-        listaLibros.stream()
-                .flatMap(libro -> libro.autor().stream())
-                .filter(autor -> autor.defuncion() > periodo)
-                .peek(autor -> listaAutoresPeriodo.add(autor.nombre()))
-                .forEach(autor -> {
-                    System.out.println("\nAutor: " + autor.nombre());
-                    System.out.println("  Nacimiento: " + (autor.nacimiento() != null ? autor.nacimiento() : "Desconocido"));
-                    System.out.println("  Defunción: " + (autor.defuncion() != null ? autor.defuncion() : "Desconocida"));
-                });
-        if (listaAutoresPeriodo.isEmpty()) {
-            System.out.println("No hay autores registrados aún.");
-        }
-    }
-
-    private void listarLibrosXIdioma(){
-            if (listaLibros.isEmpty()) {
-                System.out.println("No hay libros registrados.");
+            if(libroExistente != null){
+                System.out.println("Libro ya existe en base de datos");
                 return;
             }
 
-            List<Libro> libros = listaLibros.stream()
-                    .map(Libro::new)
-                    .toList();
+            Autor autor = repoAutor.findByNombre(libro.getAutor().getNombre());
+            if (autor != null) {
+                libro.setAutor(autor);
+            } else {
+                repoAutor.save(libro.getAutor());
+            }
 
-            Map<String, Long> cantidadPorIdioma = libros.stream()
-                    .collect(Collectors.groupingBy(Libro::getIdioma, Collectors.counting()));
+            repoLibro.save(libro);
+        }
+    }
 
-            System.out.println("📚 Cantidad de libros por idioma:");
-            cantidadPorIdioma.forEach((idioma, cantidad) ->
-                System.out.println("- " + idioma + ": " + cantidad));
+    private void listarLibrosBuscados() {
+        repoLibro.findAll().forEach(System.out::println);
+    }
+
+    private void listarAutoresRegistrados() {
+        repoAutor.findAll().forEach(System.out::println);
+    }
+
+    private void listarAutoresVivosXPeriodo() {
+        System.out.println("Por favor ingresa el año tope para filtrar autores vivos.");
+        int fecha = teclado.nextInt();
+        teclado.nextLine();
+        repoAutor.obtenerAutoresVivosXFecha(fecha).forEach(System.out::println);
+    }
+
+    private void listarLibrosXIdioma(){
+        List<Libro> libros = repoLibro.findAll();
+
+        if (libros.isEmpty()) {
+            System.out.println("No hay libros registrados.");
+            return;
+        }
+
+        List<String> idiomasDisponibles = libros.stream()
+                .map(Libro::getIdioma)
+                .distinct()
+                .sorted()
+                .toList();
+
+        System.out.println("Seleccione un idioma:");
+        for (int i = 0; i < idiomasDisponibles.size(); i++) {
+            System.out.println((i + 1) + ") " + Idioma.traducirCodigo(idiomasDisponibles.get(i)));
+        }
+
+        int seleccion = teclado.nextInt();
+        teclado.nextLine();
+
+        if (seleccion < 1 || seleccion > idiomasDisponibles.size()) {
+            System.out.println("Selección inválida.");
+            return;
+        }
+
+        String idiomaElegido = idiomasDisponibles.get(seleccion - 1);
+
+        List<Libro> librosFiltrados = libros.stream()
+                .filter(libro -> libro.getIdioma().equals(idiomaElegido))
+                .toList();
+
+        System.out.println("📚 Libros en idioma " + Idioma.traducirCodigo(idiomaElegido) + ":");
+        librosFiltrados.forEach(System.out::println);
     }
 
     public static boolean esEntero(String texto) {
